@@ -1,0 +1,92 @@
+############################################
+# ========== 1. Java / Maven (Backend) =====
+############################################
+/backend/target/
+**/target/
+*.log
+
+# Maven wrapper logs
+.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
+
+# Maven output
+dependency-reduced-pom.xml
+release.properties
+
+############################################
+# ========== 2. React + Vite (Frontend) ====
+############################################
+/frontend/node_modules/
+**/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.env
+frontend/.env.*.local
+*.tsbuildinfo
+
+# Lock files (optional, unless committed intentionally)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+############################################
+# ========== 3. IDEs & Editors ============
+############################################
+# VS Code
+.vscode/
+
+# IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Eclipse / STS
+.project
+.classpath
+.settings/
+.apt_generated
+.springBeans
+.sts4-cache
+.factorypath
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# Sublime
+*.sublime-workspace
+*.sublime-project
+
+############################################
+# ========== 4. OS & Misc =================
+############################################
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.bak
+*.old
+
+############################################
+# ========== 5. Logs ======================
+############################################
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+############################################
+# ========== 6. Optional Build Rules ======
+############################################
+# Optional if you build frontend output into Spring Boot (static resources)
+# Uncomment if you copy frontend build to backend public folder
+# /backend/src/main/resources/static/
+
+# Optional Git ignore for common generated files in root
+/build/
+*.class
