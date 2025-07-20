@@ -1,9 +1,11 @@
 ############################################
 # ========== 1. Java / Maven (Backend) =====
 ############################################
+/backend/src/main/resources/application.properties
 /backend/target/
 **/target/
 *.log
+
 
 # Maven wrapper logs
 .mvn/wrapper/maven-wrapper.jar
