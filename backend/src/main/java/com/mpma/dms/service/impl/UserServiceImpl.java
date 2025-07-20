@@ -12,10 +12,12 @@ import com.mpma.dms.security.JwtUtil;
 import com.mpma.dms.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +26,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final AzureStorageService storageService;
+
     @Override
     public UserDTO createUser(UserDTO userDTO) {
         User user = User.builder()
@@ -45,7 +48,7 @@ public class UserServiceImpl implements UserService {
                     .nic(studentDTO.getNic())
                     .gpa(studentDTO.getGpa())
                     .isEligible(studentDTO.isEligible())
-                    .user(savedUser) // Link the user, this sets the ID as well
+                    .user(savedUser)
                     .build();
 
             studentRepository.save(student);
@@ -56,11 +59,20 @@ public class UserServiceImpl implements UserService {
         return mapToDTO(savedUser);
     }
 
-
     @Override
     public UserDTO getUserById(Long id) {
+        String loggedInUsername = getLoggedInUsername();
+
+        User loggedInUser = userRepository.findByUsername(loggedInUsername)
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+
+        if (!loggedInUser.getId().equals(id)) {
+            throw new AccessDeniedException("You are not authorized to access this user data");
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+
         return mapToDTO(user);
     }
 
@@ -75,51 +87,31 @@ public class UserServiceImpl implements UserService {
 
         String token = JwtUtil.generateToken(username);
         user.setAccessToken(token); // optional: save if needed
-        userRepository.save(user);  // only if you're storing token in DB
+        userRepository.save(user);  // only if you store tokens
 
         return mapToDTO(user);
     }
 
     @Override
     public List<UserDTO> getUsers() {
-        List<User> user = userRepository.findAll();
-        return user.stream()
-                .map(this::mapToDTO).toList();
-    }
-
-    private UserDTO mapToDTO(User user) {
-        UserDTO dto = new UserDTO();
-        BeanUtils.copyProperties(user, dto);
-
-        if (user.getStudent() != null) {
-            StudentDTO studentDTO = new StudentDTO();
-            BeanUtils.copyProperties(user.getStudent(), studentDTO);
-            dto.setStudent(studentDTO);
-        }
-
-        return dto;
-    }
-
-    private void createDefaultTextFiles(String userId) {
-
-        String videos = userId + "/Photos/Videos.txt";
-        String music = userId + "/Music/Music.txt";
-        String pictures = userId + "/Pictures/Pictures.txt";
-        String documents = userId + "/Documents/Documents.txt";
-
-        String content = "This is default file for user " + userId;
-        storageService.uploadFileFromText(videos, content);
-        storageService.uploadFileFromText(music, content);
-        storageService.uploadFileFromText(pictures, content);
-        storageService.uploadFileFromText(documents, content);
+        List<User> users = userRepository.findAll();
+        return users.stream().map(this::mapToDTO).toList();
     }
 
     @Override
     public UserDTO updateUser(Long id, UserDTO userDTO) {
+        String loggedInUsername = getLoggedInUsername();
+
+        User loggedInUser = userRepository.findByUsername(loggedInUsername)
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+
+        if (!loggedInUser.getId().equals(id)) {
+            throw new AccessDeniedException("You are not authorized to update this user");
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
 
-        // Update only non-null fields
         if (userDTO.getUsername() != null) {
             user.setUsername(userDTO.getUsername());
         }
@@ -128,7 +120,6 @@ public class UserServiceImpl implements UserService {
             user.setPassword(userDTO.getPassword());
         }
 
-        // Handle student fields if user is a student
         if (user.getUserType() == UserType.STUDENT && userDTO.getStudent() != null) {
             Student student = user.getStudent();
             StudentDTO studentDTO = userDTO.getStudent();
@@ -150,7 +141,6 @@ public class UserServiceImpl implements UserService {
                     student.setGpa(studentDTO.getGpa());
                 }
 
-                // Note: booleans are tricky – check if setter is explicitly requested
                 student.setEligible(studentDTO.isEligible());
             }
         }
@@ -159,4 +149,38 @@ public class UserServiceImpl implements UserService {
         return mapToDTO(updatedUser);
     }
 
+    // ==============================
+    // Helpers
+    // ==============================
+
+    private UserDTO mapToDTO(User user) {
+        UserDTO dto = new UserDTO();
+        BeanUtils.copyProperties(user, dto);
+
+        if (user.getStudent() != null) {
+            StudentDTO studentDTO = new StudentDTO();
+            BeanUtils.copyProperties(user.getStudent(), studentDTO);
+            dto.setStudent(studentDTO);
+        }
+
+        return dto;
+    }
+
+    private void createDefaultTextFiles(String userId) {
+        String videos = userId + "/Photos/Videos.txt";
+        String music = userId + "/Music/Music.txt";
+        String pictures = userId + "/Pictures/Pictures.txt";
+        String documents = userId + "/Documents/Documents.txt";
+
+        String content = "This is default file for user " + userId;
+        storageService.uploadFileFromText(videos, content);
+        storageService.uploadFileFromText(music, content);
+        storageService.uploadFileFromText(pictures, content);
+        storageService.uploadFileFromText(documents, content);
+    }
+
+    private String getLoggedInUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth.getName();
+    }
 }
